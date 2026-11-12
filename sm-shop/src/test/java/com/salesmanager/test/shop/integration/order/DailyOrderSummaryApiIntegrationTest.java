@@ -5,6 +5,9 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -98,6 +101,16 @@ class DailyOrderSummaryApiIntegrationTest extends ServicesTestSupport {
             JsonNode operation = swagger.getBody().path("paths").path("/api/v1/private/orders/summary/daily").path("get");
             assertTrue(operation.path("description").asText().contains("DATE_PURCHASED"));
             assertTrue(operation.path("responses").has("200"));
+            assertTrue(operation.path("responses").has("400"));
+            String errorRef = operation.path("responses").path("400").path("schema").path("$ref").asText();
+            assertTrue(errorRef.startsWith("#/definitions/"));
+            String errorDefinition = errorRef.substring("#/definitions/".length());
+            assertTrue(swagger.getBody().path("definitions").has(errorDefinition));
+            JsonNode errorProperties = swagger.getBody().path("definitions").path(errorDefinition).path("properties");
+            Set<String> errorFields = new HashSet<>();
+            errorProperties.fieldNames().forEachRemaining(errorFields::add);
+            assertEquals(new HashSet<>(Arrays.asList("errorCode", "message")), errorFields);
+            errorFields.forEach(field -> assertEquals("string", errorProperties.path(field).path("type").asText()));
             assertEquals(4, operation.path("parameters").size());
             for (JsonNode parameter : operation.path("parameters")) {
                 assertEquals("query", parameter.path("in").asText());
@@ -119,6 +132,11 @@ class DailyOrderSummaryApiIntegrationTest extends ServicesTestSupport {
                     "&startDate=2040-01-03&endDate=2040-01-01", "&startDate=2040-01-01&endDate=2041-01-01" }) {
                 ResponseEntity<JsonNode> bad = get("DEFAULT" + invalid, superadmin);
                 assertEquals(400, bad.getStatusCodeValue(), bad.toString());
+                Set<String> bodyFields = new HashSet<>();
+                bad.getBody().fieldNames().forEachRemaining(bodyFields::add);
+                assertEquals(errorFields, bodyFields);
+                errorFields.forEach(field -> assertTrue(bad.getBody().path(field).isTextual()));
+                assertEquals("400", bad.getBody().path("errorCode").asText());
                 assertFalse(bad.getBody().path("message").asText().isEmpty());
             }
             assertEquals(200, testRestTemplate.exchange("/api/v1/private/orders", HttpMethod.GET,

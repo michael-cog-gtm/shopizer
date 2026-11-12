@@ -9,6 +9,7 @@ import com.salesmanager.core.model.merchant.MerchantStore;
 import com.salesmanager.shop.constants.Constants;
 import com.salesmanager.shop.model.order.ReadableDailyOrderSummary;
 import com.salesmanager.shop.store.api.exception.RestApiException;
+import com.salesmanager.shop.store.api.exception.ErrorEntity;
 import com.salesmanager.shop.utils.AuthorizationUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -18,6 +19,8 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import springfox.documentation.annotations.ApiIgnore;
 
 @RestController
@@ -33,6 +36,8 @@ public class OrderSummaryApi {
     }
 
     @RequestMapping(value = "/daily", method = RequestMethod.GET)
+    @ApiResponses({ @ApiResponse(code = 400, message = "Missing or invalid dates, reversed range, or range exceeding 366 days",
+            response = ErrorEntity.class) })
     @ApiOperation(value = "Daily order counts and totals by status and currency",
             notes = "startDate and endDate are required ISO yyyy-MM-dd dates, inclusive, at most 366 days. "
                     + "Days are DATE_PURCHASED calendar dates as stored (DATE only, no time zone conversion). "
